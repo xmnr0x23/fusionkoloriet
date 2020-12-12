@@ -1,0 +1,230 @@
+--[[--
+SetColor.Fuse
+
+Just sets the unmasked area to a color.  Useful for setting colors for logos and graphic elements.
+
+--]]
+
+version = "version 1.1 (April 12, 2012)"
+
+--[[
+
+ Written by Chad Capeland (ccapeland[REMOVE-ME]@thevisualmd.com)
+ Copyright (c) 2012 Anatomical Travelogue LLC 
+ (http://www.anatomicaltravel.com/research)
+
+ The authors hereby grant permission to use, copy, and distribute this
+ software and its documentation for any purpose, provided that existing
+ copyright notices are retained in all copies and that this notice is
+ included verbatim in any distributions. Additionally, the authors grant
+ permission to modify this software and its documentation for any
+ purpose, provided that such modifications are not distributed without
+ the explicit consent of the authors and that existing copyright notices
+ are retained in all copies. 
+
+ IN NO EVENT SHALL THE AUTHORS OR DISTRIBUTORS BE LIABLE TO ANY PARTY FOR
+ DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES ARISING
+ OUT OF THE USE OF THIS SOFTWARE, ITS DOCUMENTATION, OR ANY DERIVATIVES
+ THEREOF, EVEN IF THE AUTHORS HAVE BEEN ADVISED OF THE POSSIBILITY OF
+ SUCH DAMAGE. 
+
+ THE AUTHORS AND DISTRIBUTORS SPECIFICALLY DISCLAIM ANY WARRANTIES,
+ INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+ THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, AND THE AUTHORS AND
+ DISTRIBUTORS HAVE NO OBLIGATION TO PROVIDE MAINTENANCE, SUPPORT,
+ UPDATES, ENHANCEMENTS, OR MODIFICATIONS. 
+
+--]]
+
+-- ============================================================================
+-- constants
+-- ============================================================================
+DATATYPE = "Text"
+REGS_CATEGORY = "Vonk\\Color"
+REGS_COMPANY = "Vonk"
+REGS_HELPTOPIC = "http://en.wikipedia.org/wiki/Acme_Corporation"
+REGS_NAME = "KolorietSetColor"
+REGS_OPDESCRIPTION = "KolorietSetColor"
+REGS_OPICONSTRING = "KolorietSetColor"
+TOOLS_REGID = "KolorietSetColor"
+BTN_WIDTH = 0.2
+SHOW_CALLBACKS = false
+
+-- ============================================================================
+-- modules
+-- ============================================================================
+local json = self and require("dkjson") or nil
+
+-- ============================================================================
+-- utils
+-- ============================================================================
+
+function TransformSRGBToLin(value)
+    return math.pow(((value + 0.055) / 1.055) , 2.4)
+end
+
+function TransformIntToFloat(value)
+    return value / 255
+end
+
+function HexToRGB(hex)
+    hex = hex:gsub("#", "")
+    local table_out = {}
+
+    table_out[1] =  tonumber("0x" .. hex:sub(1, 2))
+    table_out[2] =  tonumber("0x" .. hex:sub(3, 4))
+    table_out[3] =  tonumber("0x" .. hex:sub(5, 6))
+
+    return table_out
+end
+
+function IntToFloat(table_in)
+    local table_out = {}
+    
+    for index = 1, #table_in do
+        table_out[index] = TransformIntToFloat(table_in[index])
+    end
+    
+    return table_out
+end
+
+function SRGBToLin(table_in)
+    local table_out = {}
+    
+    for index = 1, #table_in do
+        table_out[index] = TransformSRGBToLin(table_in[index])
+    end
+    
+    return table_out
+end
+
+FuRegisterClass(TOOLS_REGID, CT_Tool, {
+    REGS_Category = REGS_CATEGORY,
+    REGS_Company = REGS_COMPANY,
+    REGS_HelpTopic = REGS_HELPTOPIC,
+    REGS_Name = REGS_NAME,
+    REGS_OpDescription = REGS_OPDESCRIPTION,
+    REGS_OpIconString = REGS_OPICONSTRING,
+    --REG_NoCommonCtrls = true,
+    REG_NoPreCalcProcess = true,  -- call Process for precalc requests (instead of PreCalcProcess)
+    --REG_OpNoMask = true,
+    REG_SupportsDoD = true,
+})
+
+function Create()
+
+    InPaletteArray = self:AddInput("Palette Array", "PaletteArray", {
+        INPID_InputControl = "TextEditControl",
+        LINKID_DataType = "Text",
+        LINK_Main = 2,
+        LINK_Visible = false,
+        TEC_Lines = 1
+    })
+
+    InShowInput = self:AddInput("Show Input", "ShowInput", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "CheckboxControl",
+        INP_Integer = true,
+        INP_Default = 1.0,
+        INP_External = false,
+        INP_DoNotifyChanged = true
+    })
+    
+    InAlpha = self:AddInput("Preserve Alpha", "AlphaKeep", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "CheckboxControl",
+        INP_Integer = true,
+        INP_Default = 0.0,
+        ICD_Width = .5,
+    })
+
+    InMult = self:AddInput("Multiply by Alpha", "AlphaMult", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "CheckboxControl",
+        INP_Integer = true,
+        INP_Default = 0.0,
+        ICD_Width = .5,
+    })
+
+    InCanvas = self:AddInput("Affect Canvas", "AffectCanvas", {
+        LINKID_DataType = "Number",
+        INPID_InputControl = "CheckboxControl",
+        INP_Integer = true,
+        INP_Default = 1.0,
+        ICD_Width = 1,
+    })
+
+    InImage = self:AddInput("Input", "Input", {
+        LINKID_DataType = "Image",
+        LINK_Main = 1,
+    })
+
+    OutImage = self:AddOutput("Output", "Output", {
+        LINKID_DataType = "Image",
+        LINK_Main = 1,
+    })
+end
+
+-- =============================================================================
+-- main
+-- =============================================================================
+function NotifyChanged(inp, param, time)
+    --[[
+    Handles all input control events.
+
+    :param inp: input that triggered a signal
+    :type inp: Input
+
+    :param param: parameter object holding the (new) value
+    :type param: Parameter
+
+    :param time: current frame number
+    :type time: float
+    ]]
+    if inp == InShowInput then
+        local visible
+        if param.Value == 1.0 then visible = true else visible = false end
+        InPaletteArray:SetAttrs({LINK_Visible = visible})
+    end
+end
+
+function PreCalcProcess(req)
+    Process(req)
+end
+
+function Process(req) 
+    local img = InImage:GetValue(req)
+    local out = Image({IMG_Like = img})
+    local do_canvas = ( InCanvas:GetValue(req).Value > 0.5 )
+    local keep_alpha = ( InAlpha:GetValue(req).Value > 0.5 )
+    local do_mult = ( InMult:GetValue(req).Value > 0.5 )
+    local canvaspixel = Pixel()
+    local p = Pixel()
+    local swatch_in_str = InPaletteArray:GetValue(req).Value or ""
+
+
+    local swatch = SRGBToLin(IntToFloat(HexToRGB(swatch_in_str)))
+    p.R = swatch[1]
+    p.G = swatch[2]
+    p.B = swatch[3]
+    p.A = 1.0
+
+    out:Fill(p)
+
+    if keep_alpha then
+        out = out:ChannelOpOf("Copy", img, {A = "fg.a"})
+    end
+
+    if do_mult then
+        out:AlphaMultiply()
+    end
+
+    if do_canvas then 
+            OutImage:Set(req, out)	
+        else
+            img:GetCanvasColor(canvaspixel)
+            out:SetCanvasColor(canvaspixel)
+            OutImage:Set(req, out)
+    end
+end

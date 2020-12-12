@@ -1,0 +1,286 @@
+-- ============================================================================
+-- constants
+-- ============================================================================
+DATATYPE = "Text"
+REGS_CATEGORY = "Vonk\\Color"
+REGS_COMPANY = "Vonk"
+REGS_HELPTOPIC = "http://en.wikipedia.org/wiki/Acme_Corporation"
+REGS_NAME = "KolorietJuggler"
+REGS_OPDESCRIPTION = "KolorietJuggler"
+REGS_OPICONSTRING = "KolorietJuggler"
+TOOLS_REGID = "KolorietJuggler"
+BTN_WIDTH = 0.2
+SHOW_CALLBACKS = false
+
+-- ============================================================================
+-- modules
+-- ============================================================================
+local json = self and require("dkjson") or nil
+
+-- ============================================================================
+-- utils
+-- ============================================================================
+function mirror(table_in)
+    local table_out = {}
+
+    for index = 1, #table_in do
+       table_out[index] = table_in[#table_in + 1 - index]
+    end
+    
+    return table_out
+end
+
+function rotate(table_in , offset)
+    local length = #table_in
+    local table_out = {}
+
+    for index = 1 , length do
+        table_out[index] = table_in[1 + (index - 1 + offset) % length]
+    end
+
+    return table_out
+end
+
+function shuffle(table_in)
+    local table_out = {}
+    local random = math.random
+
+    for index = 1, #table_in do
+        local offset = index - 1
+        local value = table_in[index]
+        local randomIndex = offset * random()
+        local flooredIndex = randomIndex - randomIndex%1
+
+        if flooredIndex == offset then
+            table_out[#table_out + 1] = value
+        else
+            table_out[#table_out + 1] = table_out[flooredIndex + 1]
+            table_out[flooredIndex + 1] = value
+        end
+    end
+
+    return table_out
+end
+
+-- ============================================================================
+-- fuse
+-- ============================================================================
+FuRegisterClass(TOOLS_REGID, CT_Tool, {
+    REGS_Category = REGS_CATEGORY,
+    REGS_Company = REGS_COMPANY,
+    REGS_HelpTopic = REGS_HELPTOPIC,
+    REGS_Name = REGS_NAME,
+    REGS_OpDescription = REGS_OPDESCRIPTION,
+    REGS_OpIconString = REGS_OPICONSTRING,
+    REG_NoCommonCtrls = true,
+    REG_NoPreCalcProcess = true,  -- call Process for precalc requests (instead of PreCalcProcess)
+    REG_OpNoMask = true
+})
+
+function Create()
+    InPaletteArray = self:AddInput("Palette Array", "PaletteArray", {
+        INPID_InputControl = "TextEditControl",
+        LINKID_DataType = "Text",
+        LINK_Main = 1,
+        LINK_Visible = false,
+        TEC_Lines = 1
+    })
+
+    InPaletteResult = self:AddInput("Palette Result", "PaletteResult", {
+        INPID_InputControl = "TextEditControl",
+        LINKID_DataType = "Text",
+        LINK_Main = 2,
+        LINK_Visible = false,
+        TEC_Lines = 1,
+        INP_Passive = true
+    })
+
+    InShowInput = self:AddInput("Show Input", "ShowInput", {
+        INPID_InputControl = "CheckboxControl",
+        INP_Default = 1.0,
+        INP_DoNotifyChanged = true,
+        INP_External = false,
+        INP_Integer = true,
+        LINKID_DataType = "Number"
+    })
+
+    MirrorBtn = self:AddInput("Mirror", "Mirror", {
+        ICD_Width = BTN_WIDTH,
+        IC_Visible = true,
+        INPID_InputControl = 'ButtonControl',
+        INP_DoNotifyChanged = true,
+        INP_External = false
+    })
+
+    LeftBtn = self:AddInput("Left", "Left", {
+        ICD_Width = BTN_WIDTH,
+        IC_Visible = true,
+        INPID_InputControl = 'ButtonControl',
+        INP_DoNotifyChanged = true,
+        INP_External = false,
+    })
+
+    RightBtn = self:AddInput("Right", "Right", {
+        ICD_Width = BTN_WIDTH,
+        IC_Visible = true,
+        INPID_InputControl = 'ButtonControl',
+        INP_DoNotifyChanged = true,
+        INP_External = false,
+    })
+
+    ShuffleBtn = self:AddInput("Shuffle", "Shuffle", {
+        ICD_Width = BTN_WIDTH,
+        IC_Visible = true,
+        INPID_InputControl = 'ButtonControl',
+        INP_DoNotifyChanged = true,
+        INP_External = false,
+    })
+
+    ResetBtn = self:AddInput("Reset", "Reset", {
+        ICD_Width = BTN_WIDTH,
+        IC_Visible = true,
+        INPID_InputControl = 'ButtonControl',
+        INP_DoNotifyChanged = true,
+        INP_External = false
+    })
+
+    -- GUI callbacks
+    -- callback mirror
+    CallbackMirrorBtn = self:AddInput("Mirror Callback", "MirrorCallback", {
+        IC_Visible = SHOW_CALLBACKS,
+        INPID_InputControl = "CheckboxControl",
+        INP_Default = 0.0,
+        INP_Integer = true,
+        LINKID_DataType = "Number"
+    })
+
+    -- callback left
+    CallbackLeftBtn = self:AddInput("Left Callback", "LeftCallback", {
+        IC_Visible = SHOW_CALLBACKS,
+        INPID_InputControl = "CheckboxControl",
+        INP_Default = 0.0,
+        INP_Integer = true,
+        LINKID_DataType = "Number",
+    })
+
+    -- callback right
+    CallbackRightBtn = self:AddInput("Right Callback", "RightCallback", {
+        IC_Visible = SHOW_CALLBACKS,
+        INPID_InputControl = "CheckboxControl",
+        INP_Default = 0.0,
+        INP_Integer = true,
+        LINKID_DataType = "Number",
+    })
+
+    -- callback shuffle
+    CallbackShuffleBtn = self:AddInput("Shuffle Callback", "ShuffleCallback", {
+        IC_Visible = SHOW_CALLBACKS,
+        INPID_InputControl = "CheckboxControl",
+        INP_Default = 0.0,
+        INP_Integer = true,
+        LINKID_DataType = "Number",
+    })
+
+    -- callback reset
+    CallbackResetBtn = self:AddInput("Reset Callback", "ResetCallback", {
+        IC_Visible = SHOW_CALLBACKS,
+        INPID_InputControl = "CheckboxControl",
+        INP_Default = 0.0,
+        INP_Integer = true,
+        LINKID_DataType = "Number"
+    })
+
+    OutData = self:AddOutput("Output", "Output", {
+        LINKID_DataType = DATATYPE,
+        LINK_Main = 1
+    })
+end
+
+-- =============================================================================
+-- main
+-- =============================================================================
+function NotifyChanged(inp, param, time)
+    --[[
+    Handles all input control events.
+
+    :param inp: input that triggered a signal
+    :type inp: Input
+
+    :param param: parameter object holding the (new) value
+    :type param: Parameter
+
+    :param time: current frame number
+    :type time: float
+    ]]
+    if param and param.Value == 1 then
+        if inp == MirrorBtn then
+            if param.Value == 1.0 then
+                CallbackMirrorBtn:SetSource(Number(1), 0, 0)
+            end
+        elseif inp == ResetBtn then
+            if param.Value == 1.0 then
+                CallbackResetBtn:SetSource(Number(1), 0, 0)
+            end
+        elseif inp == LeftBtn then
+            if param.Value == 1.0 then
+                CallbackLeftBtn:SetSource(Number(1), 0, 0)
+            end
+        elseif inp == RightBtn then
+            if param.Value == 1.0 then
+                CallbackRightBtn:SetSource(Number(1), 0, 0)
+            end
+        elseif inp == ShuffleBtn then
+            if param.Value == 1.0 then
+                CallbackShuffleBtn:SetSource(Number(1), 0, 0)
+            end
+        end
+    end
+    if inp == InShowInput then
+        local visible
+        if param.Value == 1.0 then visible = true else visible = false end
+        InPaletteArray:SetAttrs({LINK_Visible = visible})
+    end
+
+end
+
+function Process(req)
+    local palette_in_str = InPaletteArray:GetValue(req).Value or ""
+    local palette_out_str = InPaletteResult:GetValue(req).Value or ""
+    local palette_in = json.decode(palette_in_str) or {}
+    local palette_out = json.decode(palette_out_str) or palette_in
+    local new_palette_out = palette_out
+
+    -- callbacks
+    local mirror_triggered = CallbackMirrorBtn:GetValue(req).Value
+    local left_triggered = CallbackLeftBtn:GetValue(req).Value
+    local right_triggered = CallbackRightBtn:GetValue(req).Value
+    local shuffle_triggered = CallbackShuffleBtn:GetValue(req).Value
+    local reset_triggered = CallbackResetBtn:GetValue(req).Value
+
+    -- I want these functions to overwrite the table so that you can create a feedback loop of sorts
+    if mirror_triggered == 1 then
+        new_palette_out = mirror(new_palette_out)
+        CallbackMirrorBtn:SetSource(Number(0), 0, 0)
+    elseif left_triggered == 1 then
+        new_palette_out = rotate(new_palette_out,1)
+        CallbackLeftBtn:SetSource(Number(0), 0, 0)
+    elseif right_triggered == 1 then
+        new_palette_out = rotate(new_palette_out,-1)
+        CallbackRightBtn:SetSource(Number(0), 0, 0)
+    elseif shuffle_triggered == 1 then
+        new_palette_out = shuffle(new_palette_out)
+        CallbackShuffleBtn:SetSource(Number(0), 0, 0)
+    elseif reset_triggered == 1 then
+        new_palette_out = palette_in
+        CallbackResetBtn:SetSource(Number(0), 0, 0)
+    end
+
+    --dump(new_palette_out)
+
+    local new_palette_out_str = json.encode(new_palette_out)
+    if new_palette_out_str ~= palette_out_str then
+        InPaletteResult:SetSource(Text(new_palette_out_str), 0, 0)
+    end
+
+    OutData:Set(req, Text(new_palette_out_str))
+end
