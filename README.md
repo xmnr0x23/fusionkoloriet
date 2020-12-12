@@ -1,6 +1,6 @@
 # FusionKoloriet
 
-FusionKoloriett is a node based color library for Blackmagic Design Fusion.
+FusionKoloriet is a node based color library for Blackmagic Design Fusion.
 
 ## Acknowledgements
 
