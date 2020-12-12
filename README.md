@@ -7,6 +7,10 @@ FusionKoloriett is a node based color library for Blackmagic Design Fusion.
 - Kristof Indeherberge
 - Cédric Duriau
 
+## Requirements
+
+- [FusionText](https://github.com/xmnr0x23/fusiontext)
+
 ## Installation
 
 1. Clone or download the repository.
